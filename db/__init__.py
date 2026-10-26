@@ -13,8 +13,16 @@ def connect():
     return psycopg.connect(os.environ["DATABASE_URL"], autocommit=True)
 
 
+SCHEMA_LOCK = 4207  # any fixed number shared by all blocks
+
+
 def init_schema(conn):
-    conn.execute(SCHEMA.read_text())
+    # blocks start at the same time on a fresh database; the lock lets one create the tables
+    conn.execute("SELECT pg_advisory_lock(%s)", (SCHEMA_LOCK,))
+    try:
+        conn.execute(SCHEMA.read_text())
+    finally:
+        conn.execute("SELECT pg_advisory_unlock(%s)", (SCHEMA_LOCK,))
 
 
 def log(service, message):
