@@ -1,8 +1,9 @@
--- Desk Research: four tables.
--- sources   -> where we collect from
--- materials -> what the collector brought (one row per link)
--- findings  -> what the worker extracted with the model
--- runs      -> every run of every block, with status
+-- Desk Research: five tables.
+-- sources     -> where we collect from
+-- materials   -> what the collector brought (one row per link)
+-- findings    -> what the worker extracted with the model
+-- runs        -> every run of every block, with status
+-- subscribers -> who pressed Start in the Telegram bot
 
 CREATE TABLE IF NOT EXISTS sources (
     id          SERIAL PRIMARY KEY,
@@ -14,7 +15,7 @@ CREATE TABLE IF NOT EXISTS sources (
 
 CREATE TABLE IF NOT EXISTS runs (
     id           SERIAL PRIMARY KEY,
-    service      TEXT NOT NULL,           -- collector | worker
+    service      TEXT NOT NULL,           -- collector | worker | bot
     status       TEXT NOT NULL,           -- started | running | finished | failed
     started_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     finished_at  TIMESTAMPTZ,
@@ -42,6 +43,15 @@ CREATE TABLE IF NOT EXISTS findings (
     model           TEXT NOT NULL,
     prompt_version  TEXT NOT NULL,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- the bot marks a finding when it has been sent to subscribers
+ALTER TABLE findings ADD COLUMN IF NOT EXISTS sent_at TIMESTAMPTZ;
+
+CREATE TABLE IF NOT EXISTS subscribers (
+    chat_id     BIGINT PRIMARY KEY,
+    name        TEXT,
+    started_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 INSERT INTO sources (name, kind, url) VALUES

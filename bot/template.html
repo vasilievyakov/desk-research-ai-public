@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Desk Research</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+/*BRAND*/
+</style>
+<style>
+* { box-sizing: border-box; }
+body { overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
+.app { max-width: 560px; margin: 0 auto; min-height: 100dvh; padding-bottom: calc(68px + env(safe-area-inset-bottom)); }
+
+.label {
+  font-family: var(--family-mono); font-weight: 500; font-size: var(--type-label-size);
+  letter-spacing: var(--type-label-ls); text-transform: uppercase; color: var(--fg-faint);
+}
+.num { font-family: var(--family-mono); font-variant-numeric: tabular-nums; }
+
+/* header: scrolls away, only the filters stick */
+.head { padding: 18px 16px 4px; }
+.brand { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.wordmark { margin: 0; font-family: var(--family-display); font-weight: 800; font-size: 28px; letter-spacing: -0.03em; line-height: 1; text-transform: uppercase; }
+.meta { margin-top: 6px; }
+
+.filters { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 10px 0 10px; border-bottom: 1px solid var(--rule); display: flex; flex-direction: column; gap: 8px; }
+.chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 0 16px; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { flex: none; padding: 6px 12px; border-radius: var(--corner-md); border: 1px solid var(--rule-strong); font-size: 14px; color: var(--fg-dim); white-space: nowrap; }
+.chip .num { font-size: 11.5px; color: var(--fg-faint); margin-left: 5px; }
+.chip[aria-pressed="true"] { background: var(--fg); border-color: var(--fg); color: var(--bg); }
+.chip[aria-pressed="true"] .num { color: var(--bg); opacity: .6; }
+
+/* bottom navigation */
+.nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; background: var(--bg); border-top: 1px solid var(--rule);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.nav-in { max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; }
+.nav button { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 10px 8px 12px; color: var(--fg-faint); }
+.nav svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+.nav span { font-family: var(--family-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
+.nav button[aria-current="page"] { color: var(--fg); }
+
+/* feed */
+.feed { list-style: none; margin: 0; padding: 12px 16px 24px; display: flex; flex-direction: column; gap: 10px; }
+.item { width: 100%; display: block; border: 1px solid var(--rule); border-radius: var(--corner-lg); background: var(--surface); padding: 14px 14px 13px; transition: border-color .15s ease; }
+.item:hover, .item:focus-visible { border-color: var(--rule-strong); }
+.item:active { background: var(--surface-2); }
+.line1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; color: var(--fg-dim); }
+.line1 .src { color: var(--fg); font-weight: 600; }
+.new { width: 7px; height: 7px; border-radius: 2px; background: var(--fg); flex: none; }
+.tag { font-family: var(--family-mono); font-size: 11.5px; padding: 3px 7px; border-radius: var(--corner-sm); border: 1px solid var(--rule-strong); color: var(--fg-dim); }
+.item p { margin: 8px 0 0; font-size: 15.5px; line-height: 1.45; color: var(--fg); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.empty { padding: 48px 16px; text-align: center; color: var(--fg-dim); display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.empty p { margin: 0; }
+.reset { padding: 10px 16px; border-radius: var(--corner-md); border: 1px solid var(--rule-strong); color: var(--fg); }
+
+/* one finding */
+.detail { padding: 14px 16px 24px; display: flex; flex-direction: column; gap: 16px; animation: rise .22s ease both; }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.back { font-family: var(--family-mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--fg-dim); padding: 8px 0; }
+.pager { display: flex; align-items: center; gap: 6px; }
+.pager button { width: 38px; height: 34px; border-radius: var(--corner-md); border: 1px solid var(--rule-strong); display: grid; place-items: center; color: var(--fg); }
+.pager button:disabled { opacity: .3; cursor: default; }
+.pager .num { font-size: 12.5px; color: var(--fg-dim); min-width: 52px; text-align: center; }
+.detail h2 { margin: 0; font-family: var(--family-display); font-weight: 700; font-size: clamp(24px, 6.6vw, 30px); line-height: 1.15; letter-spacing: -0.02em; }
+.detail .orig { margin: 0; font-size: 15px; color: var(--fg-dim); line-height: 1.5; }
+.detail .excerpt { margin: 0; font-size: 15px; color: var(--fg-faint); line-height: 1.6; }
+.btn { display: block; width: 100%; text-align: center; padding: 15px 16px; border-radius: var(--corner-md); font-weight: 600; font-size: 16px; }
+.btn.main { background: var(--signal); color: var(--signal-fg); }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.trace { border-top: 1px solid var(--rule); padding-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+.trace h3 { margin: 4px 0 0; font-family: var(--family-display); font-weight: 700; font-size: 19px; }
+.trace .say { margin: 0 0 4px; font-size: 14px; color: var(--fg-dim); line-height: 1.5; }
+.rec { border: 1px solid var(--rule); border-radius: var(--corner-md); padding: 10px 12px; background: var(--surface); }
+.rec .label { display: flex; justify-content: space-between; }
+.rec p { margin: 6px 0 0; font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
+.rec .key { font-family: var(--family-mono); font-size: 12px; }
+.link { display: flex; align-items: center; gap: 8px; padding-left: 14px; font-family: var(--family-mono); font-size: 12px; color: var(--fg-faint); }
+.link::before { content: ""; width: 1px; height: 16px; background: var(--rule-strong); }
+
+/* how it happened */
+.how { padding: 8px 16px 24px; display: flex; flex-direction: column; gap: 24px; }
+.how h2 { margin: 6px 0 0; font-family: var(--family-display); font-weight: 800; font-size: 30px; line-height: 1.05; letter-spacing: -0.025em; }
+.lead { margin: 10px 0 0; color: var(--fg-dim); font-size: 15px; line-height: 1.55; }
+.steps { list-style: none; margin: 0; padding: 0; position: relative; }
+.steps::before { content: ""; position: absolute; left: 15px; top: 18px; bottom: 18px; width: 1px; background: var(--rule-strong); }
+.step { position: relative; padding-left: 46px; margin-bottom: 10px; opacity: 0; transform: translateY(8px); transition: opacity .4s ease, transform .4s ease; }
+.step.shown { opacity: 1; transform: none; }
+.dot { position: absolute; left: 0; top: 10px; width: 31px; height: 31px; border-radius: var(--corner-md); background: var(--bg); border: 1px solid var(--rule-strong); display: grid; place-items: center; font-family: var(--family-mono); font-size: 12px; color: var(--fg-dim); }
+.stepbox { width: 100%; border: 1px solid var(--rule); border-radius: var(--corner-lg); background: var(--surface); padding: 14px 14px 12px; }
+.stepbox[aria-expanded="true"] { border-color: var(--rule-strong); }
+.steptop { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.verb { font-family: var(--family-display); font-weight: 700; font-size: 20px; }
+.metric { font-family: var(--family-mono); font-variant-numeric: tabular-nums; font-size: 22px; font-weight: 600; }
+.metric mark { background: var(--marker); color: var(--marker-fg); padding: 0 6px; border-radius: 4px; }
+.say { margin: 6px 0 0; color: var(--fg-dim); font-size: 14px; line-height: 1.5; }
+.more { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--rule); font-size: 14px; line-height: 1.55; color: var(--fg-dim); }
+.stepbox[aria-expanded="true"] .more { display: block; }
+.more code { font-family: var(--family-mono); font-size: 12.5px; color: var(--fg); background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+.rows { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.row { display: grid; grid-template-columns: 1fr auto; gap: 10px; font-size: 13px; }
+.row .track { grid-column: 1 / -1; height: 4px; background: var(--surface-2); border-radius: 2px; overflow: hidden; }
+.row .track i { display: block; height: 100%; background: var(--fg-faint); }
+.foot { padding: 0 16px 20px; }
+
+@media (prefers-reduced-motion: reduce) { .detail, .step { animation: none; transition: none; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="head" id="head">
+    <div class="brand">
+      <h1 class="wordmark">Desk Research</h1>
+      <span class="label">AI</span>
+    </div>
+    <div class="label meta" id="meta"></div>
+  </header>
+  <div class="filters" id="filters">
+    <div class="chips" id="periods"></div>
+    <div class="chips" id="sources"></div>
+  </div>
+  <main id="view"></main>
+</div>
+
+<nav class="nav" aria-label="Разделы">
+  <div class="nav-in">
+    <button data-view="feed" aria-current="page">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="5" rx="1.5"/><rect x="4" y="11" width="16" height="5" rx="1.5"/><path d="M4 20h10"/></svg>
+      <span>Лента</span>
+    </button>
+    <button data-view="how">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="12" r="2"/><path d="M8 6h3a3 3 0 0 1 3 3v0a3 3 0 0 0 3 3M8 18h3a3 3 0 0 0 3-3v0a3 3 0 0 1 3-3"/></svg>
+      <span>Как это получилось</span>
+    </button>
+  </div>
+</nav>
+
+<script>
+const DATA = /*DATA*/null/*END*/;
+
+const tg = window.Telegram && window.Telegram.WebApp;
+const inTelegram = !!(tg && tg.initData);
+if (inTelegram) {
+  tg.ready(); tg.expand();
+  try { tg.setHeaderColor("#0b0b0c"); tg.setBackgroundColor("#0b0b0c"); tg.setBottomBarColor && tg.setBottomBarColor("#0b0b0c"); } catch (e) {}
+}
+
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const pad = (n) => String(n).padStart(2, "0");
+const plural = (n, one, few, many) => {
+  const a = Math.abs(n) % 100, b = a % 10;
+  if (a > 10 && a < 20) return many;
+  if (b === 1) return one;
+  if (b >= 2 && b <= 4) return few;
+  return many;
+};
+const day = (iso) => new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+const tags = (f) => (f.reason || "").split(/,\s*/).map((t) => t.trim()).filter((t) => t && t.length <= 24).slice(0, 3);
+const haptic = () => { if (inTelegram && tg.HapticFeedback) tg.HapticFeedback.selectionChanged(); };
+
+function openLink(url) {
+  if (inTelegram) tg.openLink(url); else window.open(url, "_blank", "noopener");
+}
+
+const findings = DATA.findings;
+const lastRun = DATA.run ? DATA.run.id : null;
+const state = { view: "feed", period: "all", company: "all", open: null, feedScroll: 0 };
+
+const PERIODS = [
+  { key: "all", name: "Все", days: Infinity },
+  { key: "today", name: "Сегодня", days: 1 },
+  { key: "week", name: "Неделя", days: 7 },
+  { key: "month", name: "Месяц", days: 31 },
+];
+const inPeriod = (f, key) => (Date.now() - new Date(f.date).getTime()) / 864e5 <= PERIODS.find((x) => x.key === key).days;
+const companies = [...new Set(findings.map((f) => f.reason).filter(Boolean))].sort((a, b) => findings.filter((f) => f.reason === b).length - findings.filter((f) => f.reason === a).length);
+const byCompany = (f, c) => c === "all" || f.reason === c;
+const visible = () => findings
+  .filter((f) => inPeriod(f, state.period) && byCompany(f, state.company))
+  .sort((a, b) => b.date.localeCompare(a.date));
+
+/* ---------- filters ---------- */
+function renderFilters() {
+  const show = state.view === "feed" && state.open === null && findings.length > 0;
+  $("#filters").style.display = show ? "" : "none";
+  if (!show) return;
+  $("#periods").innerHTML = PERIODS.map((p) => {
+    const n = findings.filter((f) => inPeriod(f, p.key) && byCompany(f, state.company)).length;
+    return `<button class="chip" data-period="${p.key}" aria-pressed="${state.period === p.key}">${p.name}<span class="num">${n}</span></button>`;
+  }).join("");
+  $("#sources").innerHTML = ["all", ...companies].map((c) => {
+    const n = findings.filter((f) => inPeriod(f, state.period) && byCompany(f, c)).length;
+    return `<button class="chip" data-company="${esc(c)}" aria-pressed="${state.company === c}">${c === "all" ? "Все компании" : esc(c)}<span class="num">${n}</span></button>`;
+  }).join("");
+  document.querySelectorAll("[data-period]").forEach((b) => b.onclick = () => { state.period = b.dataset.period; haptic(); render(); });
+  document.querySelectorAll("[data-company]").forEach((b) => b.onclick = () => { state.company = b.dataset.company; haptic(); render(); });
+}
+
+/* ---------- feed ---------- */
+function renderFeed() {
+  if (!findings.length) {
+    return `<div class="empty"><p>Находок пока нет.</p><p class="label">Они появятся после ближайшего сбора и разбора моделью</p></div>`;
+  }
+  const list = visible();
+  if (!list.length) {
+    return `<div class="empty"><p>По этим фильтрам находок нет.</p><button class="reset" data-reset>Сбросить фильтры</button></div>`;
+  }
+  return `<ul class="feed">${list.map((f) => `
+    <li><button class="item" data-open="${f.id}">
+      <span class="line1">
+        ${f.run_id === lastRun ? `<span class="new" title="из последнего прогона"></span>` : ""}
+        <span class="src">${esc(f.source)}</span><span>· ${day(f.date)}</span>
+        ${tags(f).map((t) => `<span class="tag">${esc(t)}</span>`).join("")}
+      </span>
+      <p>${esc(f.summary)}</p>
+    </button></li>`).join("")}</ul>`;
+}
+
+/* ---------- one finding ---------- */
+function renderDetail(f) {
+  const list = visible();
+  const at = list.findIndex((x) => x.id === f.id);
+  const same = f.summary.trim() === f.title.trim();
+  const text = f.text ? esc(f.text) + (f.text.length >= 600 ? "…" : "") : "";
+  return `<article class="detail">
+    <div class="bar">
+      ${inTelegram ? `<span class="label">${esc(f.source)}</span>` : `<button class="back" data-back>← Лента</button>`}
+      <div class="pager">
+        <button data-step="-1" aria-label="Предыдущая" ${at <= 0 ? "disabled" : ""}>←</button>
+        <span class="num">${at + 1} из ${list.length}</span>
+        <button data-step="1" aria-label="Следующая" ${at >= list.length - 1 ? "disabled" : ""}>→</button>
+      </div>
+    </div>
+    <span class="label">${esc(f.source)} · ${day(f.date)}${f.run_id === lastRun ? " · новое" : ""}</span>
+    <h2>${esc(f.summary)}</h2>
+    ${same ? "" : `<p class="orig">${esc(f.title)}</p>`}
+    ${text ? `<p class="excerpt">${text}</p>` : ""}
+    ${tags(f).length ? `<div class="tags">${tags(f).map((t) => `<span class="tag">${esc(t)}</span>`).join("")}</div>` : ""}
+    ${inTelegram ? "" : `<button class="btn main" data-url="${esc(f.url)}">Открыть материал</button>`}
+    <section class="trace">
+      <span class="label">Связи</span>
+      <h3>Откуда эта находка</h3>
+      <p class="say">В каждой записи лежит номер записи из другой таблицы. По этим номерам от находки доходим до источника.</p>
+      <div class="rec">
+        <span class="label"><span>findings</span><span class="num">id ${f.id}</span></span>
+        <p class="key">entity = ${esc(f.reason || "—")} · model = ${esc(f.model)}</p>
+        <p class="key">material_id = ${f.material_id}${f.sent_at ? ` · отправлена ${esc(f.sent_at.slice(0, 16).replace("T", " "))}` : ""}</p>
+      </div>
+      <span class="link">material_id → materials.id</span>
+      <div class="rec">
+        <span class="label"><span>materials</span><span class="num">id ${f.material_id}</span></span>
+        <p>${esc(f.title)}</p>
+        <p class="key">source_id = ${f.source_id} · run_id = ${f.run_id == null ? "—" : f.run_id}</p>
+      </div>
+      <span class="link">source_id → sources.id</span>
+      <div class="rec">
+        <span class="label"><span>sources</span><span class="num">id ${f.source_id}</span></span>
+        <p>${esc(f.source)}</p>
+        <p class="key">${esc(f.source_url)}</p>
+      </div>
+    </section>
+  </article>`;
+}
+
+/* ---------- how it happened ---------- */
+function renderHow() {
+  const r = DATA.run, t = DATA.totals;
+  if (!r) return `<div class="empty"><p>Прогонов еще не было.</p></div>`;
+  const maxNew = Math.max(1, ...DATA.sources.map((s) => s.new));
+  const rows = DATA.sources.map((s) => `
+    <div class="row"><span>${esc(s.name)}</span><span class="num">${s.new} ${plural(s.new, "новый", "новых", "новых")}</span>
+    <span class="track"><i style="width:${Math.round(100 * s.new / maxNew)}%"></i></span></div>`).join("");
+  const steps = [
+    { verb: "Собрал", metric: r.added,
+      say: `Сбор обошел ${DATA.sources.length} ${plural(DATA.sources.length, "источник", "источника", "источников")} и принес ${r.added} ${plural(r.added, "новый материал", "новых материала", "новых материалов")}.`,
+      more: `Каждый источник читается отдельно: если один не ответил, остальные читаются дальше. Код: <code>collector/main.py</code>, источники в таблице <code>sources</code>. Сбор запускается по расписанию.<div class="rows">${rows}</div>` },
+    { verb: "Сохранил", metric: t.materials,
+      say: `В базе Postgres сейчас ${t.materials} ${plural(t.materials, "материал", "материала", "материалов")}. Повторы она не пускает.`,
+      more: `У ссылки в таблице <code>materials</code> стоит правило <code>UNIQUE</code>: одна ссылка не попадет в базу дважды. Каждый материал знает свой источник (<code>source_id</code>) и прогон сбора (<code>run_id</code>).` },
+    { verb: "Разобрал", metric: `<mark>${r.kept}</mark>`,
+      say: `Модель посмотрела ${r.processed} ${plural(r.processed, "материал", "материала", "материалов")}: ${r.kept} ${plural(r.kept, "стал находкой", "стали находками", "стали находками")}, ${r.skipped} не про AI${r.failed ? `, ${r.failed} не разобрано` : ""}${r.waiting ? `, ${r.waiting} ждут очереди` : ""}.`,
+      more: `Это единственное место системы, где работает модель: <code>worker/main.py</code>. Она решает, про AI ли материал, пишет одну фразу и выбирает компанию из списка <code>ENTITIES</code>. Находка ложится в таблицу <code>findings</code> со ссылкой на материал.` },
+    { verb: "Отправил", metric: r.sent,
+      say: r.sent ? `Бот прислал ${r.sent} ${plural(r.sent, "находку", "находки", "находок")} подписчикам: их ${t.subscribers}.` : `Из этого сбора бот еще ничего не рассылал. Подписчиков: ${t.subscribers}.`,
+      more: `Когда модель разобрала весь сбор, бот присылает одну сводку всем из таблицы <code>subscribers</code> и ставит находкам отметку <code>sent_at</code>. Поэтому одна находка не придет дважды. Код: <code>bot/main.py</code>.` },
+  ];
+  const fin = (r.finished_at || "").slice(0, 16).replace("T", " ");
+  return `<div class="how">
+    <header>
+      <span class="label">Сбор <span class="num">${r.id}</span> · ${esc(fin)} UTC · ${r.status === "failed" ? "упал" : "завершен"}</span>
+      <h2>Как это получилось</h2>
+      <p class="lead">Путь последнего сбора через четыре блока: сбор, база, модель, бот. Нажмите на шаг, чтобы увидеть, что внутри.</p>
+    </header>
+    <ol class="steps">${steps.map((s, i) => `
+      <li class="step"><span class="dot">${pad(i + 1)}</span>
+        <button class="stepbox" aria-expanded="false">
+          <span class="steptop"><span class="verb">${s.verb}</span><span class="metric">${s.metric}</span></span>
+          <p class="say">${s.say}</p><div class="more">${s.more}</div>
+        </button></li>`).join("")}
+    </ol>
+  </div>
+  <div class="foot label">Собрано ${esc(DATA.generated_at)} UTC · база Postgres · прогонов всех блоков ${t.runs}</div>`;
+}
+
+/* ---------- navigation ---------- */
+function openFinding(id) {
+  if (state.open === null) state.feedScroll = window.scrollY;
+  state.open = id;
+  haptic();
+  render();
+  window.scrollTo(0, 0);
+}
+
+function stepFinding(delta) {
+  const list = visible();
+  const next = list[list.findIndex((f) => f.id === state.open) + delta];
+  if (next) { state.open = next.id; haptic(); render(); window.scrollTo(0, 0); }
+}
+
+function closeDetail() {
+  state.open = null;
+  render();
+  window.scrollTo(0, state.feedScroll);
+}
+
+function go(view) {
+  if (view === state.view && state.open === null) { window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+  if (state.view === "feed" && state.open === null) state.feedScroll = window.scrollY;
+  state.view = view;
+  state.open = null;
+  haptic();
+  render();
+  window.scrollTo(0, view === "feed" ? state.feedScroll : 0);
+}
+
+function openMaterial() {
+  const f = findings.find((x) => x.id === state.open);
+  if (f) openLink(f.url);
+}
+
+function render() {
+  document.querySelectorAll(".nav button").forEach((b) => {
+    if (b.dataset.view === state.view) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+  });
+  const total = findings.length;
+  $("#meta").textContent = `${total} ${plural(total, "находка", "находки", "находок")} · ${DATA.totals.sources} ${plural(DATA.totals.sources, "источник", "источника", "источников")} · обновлено ${DATA.generated_at.slice(11)} UTC`;
+  $("#head").style.display = state.open !== null ? "none" : "";
+  renderFilters();
+
+  const view = $("#view");
+  const detail = state.view === "feed" && state.open !== null;
+  if (state.view === "how") view.innerHTML = renderHow();
+  else if (detail) view.innerHTML = renderDetail(findings.find((f) => f.id === state.open));
+  else view.innerHTML = renderFeed();
+
+  view.querySelectorAll("[data-open]").forEach((b) => b.onclick = () => openFinding(Number(b.dataset.open)));
+  view.querySelectorAll("[data-step]").forEach((b) => b.onclick = () => stepFinding(Number(b.dataset.step)));
+  view.querySelectorAll("[data-url]").forEach((b) => b.onclick = () => openLink(b.dataset.url));
+  view.querySelectorAll("[data-back]").forEach((b) => b.onclick = closeDetail);
+  view.querySelectorAll("[data-reset]").forEach((b) => b.onclick = () => { state.period = "all"; state.company = "all"; render(); });
+  view.querySelectorAll(".stepbox").forEach((b) => b.onclick = () => b.setAttribute("aria-expanded", b.getAttribute("aria-expanded") !== "true"));
+  view.querySelectorAll(".step").forEach((s, i) => setTimeout(() => s.classList.add("shown"), 80 + i * 160));
+
+  if (inTelegram) {
+    if (detail) {
+      tg.BackButton.show();
+      tg.MainButton.setParams({ text: "Открыть материал", color: "#BFFF00", text_color: "#0b0b0c", is_visible: true });
+    } else {
+      tg.BackButton.hide();
+      tg.MainButton.hide();
+    }
+  }
+}
+
+document.querySelectorAll(".nav button").forEach((b) => b.onclick = () => go(b.dataset.view));
+if (inTelegram) {
+  tg.BackButton.onClick(closeDetail);
+  tg.MainButton.onClick(openMaterial);
+}
+
+// keyboard and swipe inside a finding
+document.addEventListener("keydown", (e) => {
+  if (state.open === null) return;
+  if (e.key === "Escape") closeDetail();
+  if (e.key === "ArrowRight") stepFinding(1);
+  if (e.key === "ArrowLeft") stepFinding(-1);
+});
+let touch = null;
+document.addEventListener("touchstart", (e) => { touch = state.open === null ? null : { x: e.touches[0].clientX, y: e.touches[0].clientY }; }, { passive: true });
+document.addEventListener("touchend", (e) => {
+  if (!touch) return;
+  const dx = e.changedTouches[0].clientX - touch.x, dy = e.changedTouches[0].clientY - touch.y;
+  if (Math.abs(dx) > 60 && Math.abs(dx) > 2 * Math.abs(dy)) stepFinding(dx < 0 ? 1 : -1);
+  touch = null;
+});
+
+render();
+</script>
+</body>
+</html>
