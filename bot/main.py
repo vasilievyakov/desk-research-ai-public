@@ -23,6 +23,7 @@ SERVICE = "bot"
 HERE = Path(__file__).resolve().parent
 SEND_EVERY_SECONDS = 60
 LATEST = 5  # findings listed in the summary, the rest are in the feed
+TONES = {"хорошая": "хорошие", "плохая": "плохие", "нейтральная": "нейтральные"}
 
 COMMANDS = [
     {"command": "start", "description": "подписаться на находки"},
@@ -142,7 +143,12 @@ def send_new(conn):
         " WHERE f.id = ANY(%s) ORDER BY f.id DESC LIMIT %s",
         (ids, LATEST),
     ).fetchall()
+    tones = conn.execute(
+        "SELECT sentiment, count(*) FROM findings WHERE id = ANY(%s) GROUP BY sentiment ORDER BY count(*) DESC",
+        (ids,),
+    ).fetchall()
     text = f"<b>Новых находок: {len(ids)}</b>\n" + " · ".join(f"{html.escape(name)} {count}" for name, count in companies)
+    text += "\nТон: " + " · ".join(f"{TONES.get(tone, 'без оценки')} {count}" for tone, count in tones)
     text += "\n\nСвежие:\n\n" + "\n\n".join(finding_lines(latest))
     if len(ids) > LATEST:
         text += f"\n\nЕще {len(ids) - LATEST} в ленте."
@@ -278,11 +284,12 @@ def page_data(conn):
         "text",
         "sent_at",
         "model",
+        "sentiment",
     )
     findings = []
     for row in conn.execute(
         "SELECT f.id, m.id, f.summary, f.entity, m.title, m.url, coalesce(m.published_at, m.collected_at), m.run_id,"
-        " s.id, s.name, s.url, left(m.text, 600), f.sent_at, f.model"
+        " s.id, s.name, s.url, left(m.text, 600), f.sent_at, f.model, f.sentiment"
         " FROM findings f JOIN materials m ON m.id = f.material_id JOIN sources s ON s.id = m.source_id"
         " ORDER BY f.id DESC LIMIT 300"
     ):

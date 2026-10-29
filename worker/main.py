@@ -12,7 +12,7 @@ import db
 
 SERVICE = "worker"
 MODEL = os.environ.get("MODEL", "anthropic/claude-haiku-5.5")
-PROMPT_VERSION = "v1"
+PROMPT_VERSION = "v2"
 POLL_SECONDS = 10
 RETRY_SECONDS = 3600
 
@@ -31,6 +31,8 @@ ENTITIES = [
     "Сбер",
 ]
 
+SENTIMENTS = ["хорошая", "плохая", "нейтральная"]
+
 PROMPT = """Ты помогаешь вести desk research по рынку разговоров об искусственном интеллекте.
 Материал:
 Заголовок: {title}
@@ -39,6 +41,7 @@ PROMPT = """Ты помогаешь вести desk research по рынку р�
 Ответь строго JSON без пояснений:
 {{"about_ai": true или false — материал про искусственный интеллект,
   "entity": одна компания из списка {entities}, о которой материал, или null,
+  "sentiment": "хорошая", "плохая" или "нейтральная" — тон новости для рынка AI,
   "summary": "о чем материал, одна короткая фраза по-русски"}}"""
 
 
@@ -90,10 +93,15 @@ def process_new(conn):
             continue
         if answer.get("about_ai"):
             entity = answer.get("entity") if answer.get("entity") in ENTITIES else None
+            sentiment = (
+                answer.get("sentiment")
+                if answer.get("sentiment") in SENTIMENTS
+                else None
+            )
             conn.execute(
-                """INSERT INTO findings (material_id, entity, summary, model, prompt_version)
-                   VALUES (%s, %s, %s, %s, %s) ON CONFLICT (material_id) DO NOTHING""",
-                (material_id, entity, answer["summary"], MODEL, PROMPT_VERSION),
+                """INSERT INTO findings (material_id, entity, sentiment, summary, model, prompt_version)
+                   VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT (material_id) DO NOTHING""",
+                (material_id, entity, sentiment, answer["summary"], MODEL, PROMPT_VERSION),
             )
             conn.execute(
                 "UPDATE materials SET status = 'done' WHERE id = %s", (material_id,)
@@ -101,7 +109,7 @@ def process_new(conn):
             found += 1
             db.log(
                 SERVICE,
-                f"материал {material_id} -> находка ({entity or 'без компании'}): {answer['summary']}",
+                f"материал {material_id} -> находка ({entity or 'без компании'}, {sentiment or 'без тона'}): {answer['summary']}",
             )
         else:
             conn.execute(

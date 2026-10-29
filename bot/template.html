@@ -125,6 +125,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   <div class="filters" id="filters">
     <div class="chips" id="periods"></div>
     <div class="chips" id="sources"></div>
+    <div class="chips" id="tones"></div>
   </div>
   <main id="view"></main>
 </div>
@@ -172,7 +173,7 @@ function openLink(url) {
 
 const findings = DATA.findings;
 const lastRun = DATA.run ? DATA.run.id : null;
-const state = { view: "feed", period: "all", company: "all", open: null, feedScroll: 0 };
+const state = { view: "feed", period: "all", company: "all", tone: "all", open: null, feedScroll: 0 };
 
 const PERIODS = [
   { key: "all", name: "Все", days: Infinity },
@@ -183,8 +184,15 @@ const PERIODS = [
 const inPeriod = (f, key) => (Date.now() - new Date(f.date).getTime()) / 864e5 <= PERIODS.find((x) => x.key === key).days;
 const companies = [...new Set(findings.map((f) => f.reason).filter(Boolean))].sort((a, b) => findings.filter((f) => f.reason === b).length - findings.filter((f) => f.reason === a).length);
 const byCompany = (f, c) => c === "all" || f.reason === c;
+const TONES = [
+  { key: "all", name: "Любой тон" },
+  { key: "хорошая", name: "Хорошие" },
+  { key: "нейтральная", name: "Нейтральные" },
+  { key: "плохая", name: "Плохие" },
+];
+const byTone = (f, t) => t === "all" || f.sentiment === t;
 const visible = () => findings
-  .filter((f) => inPeriod(f, state.period) && byCompany(f, state.company))
+  .filter((f) => inPeriod(f, state.period) && byCompany(f, state.company) && byTone(f, state.tone))
   .sort((a, b) => b.date.localeCompare(a.date));
 
 /* ---------- filters ---------- */
@@ -193,13 +201,18 @@ function renderFilters() {
   $("#filters").style.display = show ? "" : "none";
   if (!show) return;
   $("#periods").innerHTML = PERIODS.map((p) => {
-    const n = findings.filter((f) => inPeriod(f, p.key) && byCompany(f, state.company)).length;
+    const n = findings.filter((f) => inPeriod(f, p.key) && byCompany(f, state.company) && byTone(f, state.tone)).length;
     return `<button class="chip" data-period="${p.key}" aria-pressed="${state.period === p.key}">${p.name}<span class="num">${n}</span></button>`;
   }).join("");
   $("#sources").innerHTML = ["all", ...companies].map((c) => {
-    const n = findings.filter((f) => inPeriod(f, state.period) && byCompany(f, c)).length;
+    const n = findings.filter((f) => inPeriod(f, state.period) && byCompany(f, c) && byTone(f, state.tone)).length;
     return `<button class="chip" data-company="${esc(c)}" aria-pressed="${state.company === c}">${c === "all" ? "Все компании" : esc(c)}<span class="num">${n}</span></button>`;
   }).join("");
+  $("#tones").innerHTML = TONES.map((t) => {
+    const n = findings.filter((f) => inPeriod(f, state.period) && byCompany(f, state.company) && byTone(f, t.key)).length;
+    return `<button class="chip" data-tone="${t.key}" aria-pressed="${state.tone === t.key}">${t.name}<span class="num">${n}</span></button>`;
+  }).join("");
+  document.querySelectorAll("[data-tone]").forEach((b) => b.onclick = () => { state.tone = b.dataset.tone; haptic(); render(); });
   document.querySelectorAll("[data-period]").forEach((b) => b.onclick = () => { state.period = b.dataset.period; haptic(); render(); });
   document.querySelectorAll("[data-company]").forEach((b) => b.onclick = () => { state.company = b.dataset.company; haptic(); render(); });
 }
@@ -219,6 +232,7 @@ function renderFeed() {
         ${f.run_id === lastRun ? `<span class="new" title="из последнего прогона"></span>` : ""}
         <span class="src">${esc(f.source)}</span><span>· ${day(f.date)}</span>
         ${tags(f).map((t) => `<span class="tag">${esc(t)}</span>`).join("")}
+        ${f.sentiment ? `<span class="tag">${esc(f.sentiment)}</span>` : ""}
       </span>
       <p>${esc(f.summary)}</p>
     </button></li>`).join("")}</ul>`;
@@ -251,7 +265,7 @@ function renderDetail(f) {
       <p class="say">В каждой записи лежит номер записи из другой таблицы. По этим номерам от находки доходим до источника.</p>
       <div class="rec">
         <span class="label"><span>findings</span><span class="num">id ${f.id}</span></span>
-        <p class="key">entity = ${esc(f.reason || "—")} · model = ${esc(f.model)}</p>
+        <p class="key">entity = ${esc(f.reason || "—")} · sentiment = ${esc(f.sentiment || "—")} · model = ${esc(f.model)}</p>
         <p class="key">material_id = ${f.material_id}${f.sent_at ? ` · отправлена ${esc(f.sent_at.slice(0, 16).replace("T", " "))}` : ""}</p>
       </div>
       <span class="link">material_id → materials.id</span>
@@ -365,7 +379,7 @@ function render() {
   view.querySelectorAll("[data-step]").forEach((b) => b.onclick = () => stepFinding(Number(b.dataset.step)));
   view.querySelectorAll("[data-url]").forEach((b) => b.onclick = () => openLink(b.dataset.url));
   view.querySelectorAll("[data-back]").forEach((b) => b.onclick = closeDetail);
-  view.querySelectorAll("[data-reset]").forEach((b) => b.onclick = () => { state.period = "all"; state.company = "all"; render(); });
+  view.querySelectorAll("[data-reset]").forEach((b) => b.onclick = () => { state.period = "all"; state.company = "all"; state.tone = "all"; render(); });
   view.querySelectorAll(".stepbox").forEach((b) => b.onclick = () => b.setAttribute("aria-expanded", b.getAttribute("aria-expanded") !== "true"));
   view.querySelectorAll(".step").forEach((s, i) => setTimeout(() => s.classList.add("shown"), 80 + i * 160));
 
