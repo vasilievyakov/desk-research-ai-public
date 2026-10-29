@@ -35,14 +35,18 @@ def setting(name):
 
 
 def page_url():
-    """Address of the Mini App: set by hand or taken from the Railway domain."""
-    if setting("MINI_APP_URL"):
-        return setting("MINI_APP_URL")
-    return (
-        f"https://{setting('RAILWAY_PUBLIC_DOMAIN')}/"
-        if setting("RAILWAY_PUBLIC_DOMAIN")
-        else ""
+    """Address of the Mini App: set by hand or taken from the platform (Railway, Coolify)."""
+    url = (
+        setting("MINI_APP_URL")
+        or setting("RAILWAY_PUBLIC_DOMAIN")
+        or setting("COOLIFY_URL")
     )
+    if not url:
+        return ""
+    url = url.split(",")[0].strip()  # Coolify lists several domains separated by commas
+    if not url.startswith("http"):
+        url = f"https://{url}"
+    return url.rstrip("/") + "/"
 
 
 # ---------- Telegram ----------
